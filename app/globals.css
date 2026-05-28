@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=M+PLUS+Rounded+1c:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #F5C842;
+  --primary-light: #FDE68A;
+  --primary-dark: #D4A017;
+  --accent: #4AABE8;
+  --accent-light: #BAE6FD;
+  --accent-dark: #0284C7;
+  --bg: #FDFCF7;
+  --surface: #FFFFFF;
+  --text: #2D2D2D;
+  --text-muted: #6B7280;
+  --bubble-user: #4AABE8;
+  --bubble-ai: #F5C842;
+  --danger: #EF4444;
+  --safe: #22C55E;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'M PLUS Rounded 1c', 'Noto Sans JP', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.bubble-user {
+  background: var(--bubble-user);
+  color: white;
+  border-radius: 20px 20px 4px 20px;
+}
+
+.bubble-ai {
+  background: var(--bubble-ai);
+  color: var(--text);
+  border-radius: 20px 20px 20px 4px;
+}
+
+.bubble-system {
+  background: #F3F4F6;
+  color: var(--text-muted);
+  border-radius: 16px;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease forwards;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.5s ease-in-out infinite;
+}
+
+.fish-logo {
+  filter: drop-shadow(0 4px 12px rgba(245, 200, 66, 0.4));
+}
