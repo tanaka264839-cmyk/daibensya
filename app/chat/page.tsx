@@ -5,10 +5,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 type Message = {
   role: "user" | "ai" | "system" | "safety";
   content: string;
-  delay?: number;
 };
 
-type Phase = "interviewing" | "summarizing" | "answering" | "done" | "safety";
+type Phase = "interviewing" | "summarizing" | "done" | "safety";
 
 type AnswerResult = {
   situation: string;
@@ -17,6 +16,18 @@ type AnswerResult = {
   suggestion: string;
   prompt: string;
 };
+
+function FishLogo({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 80 80">
+      <circle cx="40" cy="40" r="38" fill="#F5C842" />
+      <ellipse cx="52" cy="32" rx="14" ry="10" fill="#4AABE8" transform="rotate(-30 52 32)" />
+      <circle cx="48" cy="38" r="8" fill="white" />
+      <circle cx="50" cy="37" r="4" fill="#2D2D2D" />
+      <circle cx="51" cy="36" r="1.5" fill="white" />
+    </svg>
+  );
+}
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -43,9 +54,7 @@ function ChatContent() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const addMessage = (msg: Message) => {
-    setMessages((prev) => [...prev, msg]);
-  };
+  const addMessage = (msg: Message) => setMessages((prev) => [...prev, msg]);
 
   const startInterview = async (userInput: string) => {
     setLoading(true);
@@ -56,20 +65,12 @@ function ChatContent() {
         body: JSON.stringify({ input: userInput, history: [] }),
       });
       const data = await res.json();
-
-      if (data.safety) {
-        setPhase("safety");
-        addMessage({ role: "safety", content: data.message });
-        return;
-      }
-
+      if (data.safety) { setPhase("safety"); addMessage({ role: "safety", content: data.message }); return; }
       addMessage({ role: "ai", content: data.question });
       setAnswers([userInput]);
     } catch {
       addMessage({ role: "system", content: "エラーが起きました。もう一度試してみてね。" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleSend = async () => {
@@ -77,11 +78,9 @@ function ChatContent() {
     const userMsg = input.trim();
     setInput("");
     addMessage({ role: "user", content: userMsg });
-
     const newAnswers = [...answers, userMsg];
     setAnswers(newAnswers);
     setLoading(true);
-
     try {
       const res = await fetch("/api/interview", {
         method: "POST",
@@ -93,13 +92,7 @@ function ChatContent() {
         }),
       });
       const data = await res.json();
-
-      if (data.safety) {
-        setPhase("safety");
-        addMessage({ role: "safety", content: data.message });
-        return;
-      }
-
+      if (data.safety) { setPhase("safety"); addMessage({ role: "safety", content: data.message }); return; }
       if (data.done) {
         setPhase("summarizing");
         addMessage({ role: "system", content: "だいぶ見えてきました。整理しています…" });
@@ -109,9 +102,7 @@ function ChatContent() {
       }
     } catch {
       addMessage({ role: "system", content: "エラーが起きました。もう一度試してみてね。" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const generateAnswer = async (allAnswers: string[], history: Message[]) => {
@@ -123,140 +114,183 @@ function ChatContent() {
         body: JSON.stringify({ input: initialQ, answers: allAnswers, history }),
       });
       const data = await res.json();
-
-      if (data.safety) {
-        setPhase("safety");
-        addMessage({ role: "safety", content: data.message });
-        return;
-      }
-
+      if (data.safety) { setPhase("safety"); addMessage({ role: "safety", content: data.message }); return; }
       setAnswerResult(data.result);
       setPhase("done");
     } catch {
       addMessage({ role: "system", content: "回答の生成中にエラーが起きました。" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #FDFCF7 0%, #FEF9EC 50%, #EFF8FF 100%)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(170deg, #FDFCF7 0%, #FEF9EC 60%, #F0F7FF 100%)" }}>
+
       {/* Header */}
-      <header className="sticky top-0 z-10 px-4 py-3 flex items-center gap-3"
-        style={{ background: "rgba(253,252,247,0.9)", backdropFilter: "blur(8px)", borderBottom: "1px solid #F3F4F6" }}>
-        <button onClick={() => router.push("/")} className="text-sm" style={{ color: "#9CA3AF" }}>← もどる</button>
+      <header className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between"
+        style={{ background: "rgba(253,252,247,0.85)", backdropFilter: "blur(12px)" }}>
+        <button onClick={() => router.push("/")}
+          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-60"
+          style={{ color: "#9CA3AF" }}>
+          <span>←</span><span>もどる</span>
+        </button>
         <div className="flex items-center gap-2">
-          <svg width="28" height="28" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="38" fill="#F5C842" />
-            <ellipse cx="52" cy="32" rx="14" ry="10" fill="#4AABE8" transform="rotate(-30 52 32)" />
-            <circle cx="48" cy="38" r="8" fill="white" />
-            <circle cx="50" cy="37" r="4" fill="#2D2D2D" />
-            <circle cx="51" cy="36" r="1.5" fill="white" />
-          </svg>
-          <span className="font-bold text-base">だいべんしゃ</span>
+          <FishLogo size={26} />
+          <span className="font-bold text-sm tracking-wide">だいべんしゃ</span>
         </div>
+        <div style={{ width: 60 }} />
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 px-4 py-6 space-y-4 max-w-lg mx-auto w-full">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex animate-fade-in-up ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            {msg.role === "safety" ? (
-              <div className="rounded-2xl p-4 max-w-sm text-sm"
-                style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626" }}>
-                <p className="font-bold mb-1">⚠️ ちょっと待って</p>
-                <p>{msg.content}</p>
-              </div>
-            ) : msg.role === "system" ? (
-              <div className="bubble-system px-4 py-2 text-sm max-w-xs text-center mx-auto">
-                {msg.content}
-              </div>
-            ) : (
-              <div className={`px-4 py-3 text-sm max-w-xs leading-relaxed ${msg.role === "user" ? "bubble-user" : "bubble-ai"}`}>
-                {msg.content}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {loading && (
-          <div className="flex justify-start animate-fade-in-up">
-            <div className="bubble-ai px-4 py-3 text-sm">
-              <span className="animate-pulse-soft">考えてるよ…</span>
-            </div>
-          </div>
-        )}
-
-        {/* Answer card */}
-        {phase === "done" && answerResult && (
-          <div className="animate-fade-in-up space-y-3 mt-4">
-            <AnswerCard label="📋 今の状況" content={answerResult.situation} color="#EFF8FF" border="#BAE6FD" />
-            <AnswerCard label="💛 本当はどうしたい？" content={answerResult.desire} color="#FEFCE8" border="#FDE68A" />
-            <AnswerCard label="⚠️ 今すぐしない方がいいこと" content={answerResult.avoid} color="#FFF7ED" border="#FED7AA" />
-            <AnswerCard label="✨ こんな言い方・行動はどう？" content={answerResult.suggestion} color="#F0FDF4" border="#BBF7D0" />
-
-            <div className="mt-2">
-              <button
-                onClick={() => setShowPrompt(!showPrompt)}
-                className="text-xs px-4 py-2 rounded-full border transition-all"
-                style={{ borderColor: "#E5E7EB", color: "#6B7280", background: "white" }}
-              >
-                {showPrompt ? "▲ プロンプトを隠す" : "📋 ChatGPT用プロンプトを見る"}
-              </button>
-              {showPrompt && (
-                <div className="mt-2 p-4 rounded-2xl text-xs leading-relaxed" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", color: "#374151" }}>
-                  <p className="font-bold mb-1 text-xs" style={{ color: "#6B7280" }}>このままChatGPTにコピペできます</p>
-                  <p style={{ whiteSpace: "pre-wrap" }}>{answerResult.prompt}</p>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(answerResult.prompt)}
-                    className="mt-2 text-xs px-3 py-1 rounded-full"
-                    style={{ background: "#F5C842", color: "white" }}
-                  >
-                    コピーする
-                  </button>
+      {/* Chat area */}
+      <div className="flex-1 py-8 px-4">
+        <div className="max-w-xl mx-auto space-y-5">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex animate-fade-in-up ${msg.role === "user" ? "justify-end" : msg.role === "system" ? "justify-center" : "justify-start"}`}>
+              {msg.role === "safety" ? (
+                <div className="max-w-sm rounded-3xl px-5 py-4 text-sm leading-relaxed"
+                  style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+                  <p className="font-bold mb-2">⚠️ ちょっと待って</p>
+                  <p style={{ whiteSpace: "pre-wrap" }}>{msg.content}</p>
+                </div>
+              ) : msg.role === "system" ? (
+                <div className="text-xs px-4 py-1.5 rounded-full"
+                  style={{ background: "rgba(0,0,0,0.05)", color: "#9CA3AF" }}>
+                  {msg.content}
+                </div>
+              ) : msg.role === "user" ? (
+                <div className="max-w-xs px-5 py-3 text-sm leading-relaxed"
+                  style={{ background: "#4AABE8", color: "white", borderRadius: "20px 20px 4px 20px" }}>
+                  {msg.content}
+                </div>
+              ) : (
+                <div className="flex items-end gap-2 max-w-xs">
+                  <div style={{ flexShrink: 0 }}><FishLogo size={22} /></div>
+                  <div className="px-5 py-3 text-sm leading-relaxed"
+                    style={{ background: "#FFF8D6", color: "#2D2D2D", borderRadius: "20px 20px 20px 4px", boxShadow: "0 2px 12px rgba(245,200,66,0.15)" }}>
+                    {msg.content}
+                  </div>
                 </div>
               )}
             </div>
+          ))}
 
-            <button
-              onClick={() => router.push("/")}
-              className="w-full py-3 rounded-2xl text-sm font-bold mt-2"
-              style={{ background: "linear-gradient(135deg, #F5C842, #4AABE8)", color: "white" }}
-            >
-              もう一度つかう
-            </button>
-          </div>
-        )}
+          {/* Loading */}
+          {loading && (
+            <div className="flex items-end gap-2 justify-start animate-fade-in-up">
+              <FishLogo size={22} />
+              <div className="px-5 py-3 text-sm"
+                style={{ background: "#FFF8D6", borderRadius: "20px 20px 20px 4px" }}>
+                <span className="animate-pulse-soft" style={{ color: "#9CA3AF" }}>…</span>
+              </div>
+            </div>
+          )}
 
-        <div ref={bottomRef} />
+          {/* Answer */}
+          {phase === "done" && answerResult && (
+            <div className="animate-fade-in-up mt-6 space-y-1">
+
+              {/* Section: 状況 */}
+              <AnswerSection
+                icon="📋"
+                label="今の状況"
+                content={answerResult.situation}
+                accent="#4AABE8"
+              />
+              {/* Section: 望み */}
+              <AnswerSection
+                icon="💛"
+                label="本当はどうしたい？"
+                content={answerResult.desire}
+                accent="#F5C842"
+              />
+              {/* Section: 避けること */}
+              <AnswerSection
+                icon="🌿"
+                label="今すぐしない方がいいこと"
+                content={answerResult.avoid}
+                accent="#86EFAC"
+              />
+              {/* Section: 提案 */}
+              <AnswerSection
+                icon="✨"
+                label="こんな言い方・行動はどう？"
+                content={answerResult.suggestion}
+                accent="#F5C842"
+                highlight
+              />
+
+              {/* Prompt toggle */}
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowPrompt(!showPrompt)}
+                  className="text-xs transition-opacity hover:opacity-70"
+                  style={{ color: "#9CA3AF" }}>
+                  {showPrompt ? "▲ プロンプトを隠す" : "ChatGPT用プロンプトを見る →"}
+                </button>
+                {showPrompt && (
+                  <div className="mt-3 p-4 rounded-2xl text-xs leading-relaxed"
+                    style={{ background: "#F9FAFB", color: "#6B7280" }}>
+                    <p className="font-medium mb-2">このままChatGPTにコピペできます</p>
+                    <p style={{ whiteSpace: "pre-wrap", lineHeight: "1.8" }}>{answerResult.prompt}</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(answerResult.prompt)}
+                      className="mt-3 text-xs px-4 py-1.5 rounded-full font-medium transition-opacity hover:opacity-80"
+                      style={{ background: "#F5C842", color: "white" }}>
+                      コピーする
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Restart */}
+              <div className="pt-4 flex justify-center">
+                <button
+                  onClick={() => router.push("/")}
+                  className="px-8 py-3 rounded-full text-sm font-bold transition-all hover:opacity-90"
+                  style={{
+                    background: "linear-gradient(135deg, #F5C842 0%, #4AABE8 100%)",
+                    color: "white",
+                    boxShadow: "0 4px 20px rgba(245,200,66,0.3)"
+                  }}>
+                  もう一度つかう
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      {/* Input area */}
-      {(phase === "interviewing") && (
-        <div className="sticky bottom-0 px-4 py-3"
-          style={{ background: "rgba(253,252,247,0.95)", backdropFilter: "blur(8px)", borderTop: "1px solid #F3F4F6" }}>
-          <div className="max-w-lg mx-auto flex gap-2">
+      {/* Input bar */}
+      {phase === "interviewing" && (
+        <div className="sticky bottom-0 px-4 pb-6 pt-3"
+          style={{ background: "rgba(253,252,247,0.9)", backdropFilter: "blur(12px)" }}>
+          <div className="max-w-xl mx-auto flex gap-2 items-center">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder="返事をしてね…"
-              className="flex-1 rounded-2xl border-2 px-4 py-2 text-sm focus:outline-none transition-all"
+              className="flex-1 px-5 py-3 text-sm focus:outline-none transition-all"
               style={{
-                borderColor: input ? "#F5C842" : "#E5E7EB",
+                background: "white",
+                borderRadius: "24px",
+                border: `2px solid ${input ? "#F5C842" : "#E5E7EB"}`,
                 fontFamily: "'M PLUS Rounded 1c', sans-serif",
+                boxShadow: input ? "0 0 0 3px rgba(245,200,66,0.1)" : "none",
               }}
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || loading}
-              className="px-4 py-2 rounded-2xl text-sm font-bold transition-all"
+              className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-all"
               style={{
                 background: input.trim() ? "linear-gradient(135deg, #F5C842, #4AABE8)" : "#E5E7EB",
                 color: input.trim() ? "white" : "#9CA3AF",
-              }}
-            >
-              送る
+                flexShrink: 0,
+                boxShadow: input.trim() ? "0 4px 12px rgba(245,200,66,0.3)" : "none",
+              }}>
+              →
             </button>
           </div>
         </div>
@@ -265,18 +299,40 @@ function ChatContent() {
   );
 }
 
-function AnswerCard({ label, content, color, border }: { label: string; content: string; color: string; border: string }) {
+function AnswerSection({
+  icon, label, content, accent, highlight = false
+}: {
+  icon: string;
+  label: string;
+  content: string;
+  accent: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="rounded-2xl p-4 text-sm leading-relaxed" style={{ background: color, border: `1px solid ${border}` }}>
-      <p className="font-bold text-xs mb-1" style={{ color: "#6B7280" }}>{label}</p>
-      <p style={{ whiteSpace: "pre-wrap" }}>{content}</p>
+    <div className="py-5 px-1" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-base">{icon}</span>
+        <span className="text-xs font-bold tracking-wide" style={{ color: accent }}>{label}</span>
+      </div>
+      <p className="text-sm leading-relaxed pl-6"
+        style={{
+          color: highlight ? "#1a1a1a" : "#374151",
+          fontWeight: highlight ? 500 : 400,
+          whiteSpace: "pre-wrap",
+        }}>
+        {content}
+      </p>
     </div>
   );
 }
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">読み込み中…</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <span style={{ color: "#9CA3AF", fontSize: 14 }}>読み込み中…</span>
+      </div>
+    }>
       <ChatContent />
     </Suspense>
   );
