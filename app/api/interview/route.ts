@@ -15,8 +15,10 @@ const SAFETY_MESSAGE = `これは一人で整理するより、今すぐ安全�
 export async function POST(req: NextRequest) {
   const { input, history = [], answers = [] } = await req.json();
 
-  // AIが答えた質問の数をhistoryから正確にカウント
-  const aiQuestionCount = history.filter((m: { role: string }) => m.role === "ai").length;
+  // answers = [最初の入力, 返答1, 返答2, ...]
+  // ユーザーの返答回数 = answers.length - 1
+  // 5往復 = ユーザーが5回答えた = answers.length >= 6
+  const userReplyCount = Math.max(0, answers.length - 1);
 
   const systemPrompt = `あなたは「だいべんしゃ」というAIアシスタントです。
 ユーザーの相談を聞いて、状況・感情・目的・ゴールを丁寧に深掘りしてください。
@@ -32,16 +34,15 @@ export async function POST(req: NextRequest) {
 曖昧な場合は必ず通常フローを続ける。
 
 【終了判断 - これは厳守すること】
-あなたがこれまでに行った質問の数: ${aiQuestionCount}回
+ユーザーがこれまでに返答した回数: ${userReplyCount}回
 
-ルール：
-- ${aiQuestionCount}が4以下の場合：{"done": true}を返すことは絶対に禁止。必ず{"question": "..."}を返すこと
-- ${aiQuestionCount}が5以上の場合：以下の4つが全て会話から確認できる場合のみ{"done": true}を返してよい
+- ${userReplyCount}が4以下の場合：{"done": true}を返すことは絶対禁止。必ず{"question": "..."}を返す
+- ${userReplyCount}が5以上の場合：以下の4つが全て確認できる場合のみ{"done": true}を返してよい
   1. 何が起きているか（状況の事実）が明確
   2. 今どんな気持ちか（感情）が明確
   3. 本当はどうしたいか（目的・ゴール）が明確
   4. 今すぐ行動が必要か（緊急性）が明確
-- ${aiQuestionCount}が7以上の場合：必ず{"done": true}を返す
+- ${userReplyCount}が7以上の場合：必ず{"done": true}を返す
 
 【質問のルール】
 - 一問だけ返す
@@ -83,6 +84,38 @@ JSONのみ返す。説明文不要。`;
   if (data.safety) {
     return NextResponse.json({ safety: true, message: SAFETY_MESSAGE });
   }
+
+  // サーバー側で強制制御：AIがdoneと言っても5往復未満は無視
+  if (data.done && userReplyCount < 5) {
+    // まだ聞けていない軸を補完質問する
+    const fallbackPrompt = `ユーザーとの会話がまだ浅いです。
+以下のうちまだ聞けていないことを一つだけ自然に聞いてください：
+- 今どんな気持ちか（感情）
+- 本当はどうしたいか（目的）
+- 今すぐ決める必要があるか（緊急性）
+- 誰かと関係する話か（関係性）
+
+やわらかく、前の返答に共感してから聞くこと。
+JSONのみ返す: {"question": "質問文"}
+
+これまでの会話: ${answers.join(" / ")}`;
+
+    const fallback = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: fallbackPrompt }],
+      max_tokens: 150,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    });
+    const fb = JSON.parse(fallback.choices[0].message.content || "{}");
+    return NextResponse.json({ question: fb.question || "もう少し教えてもらえますか？", done: false });
+  }
+
+  // 7往復強制終了
+  if (userReplyCount >= 7) {
+    return NextResponse.json({ done: true });
+  }
+
   if (data.done) {
     return NextResponse.json({ done: true });
   }
