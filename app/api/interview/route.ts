@@ -15,7 +15,8 @@ const SAFETY_MESSAGE = `これは一人で整理するより、今すぐ安全�
 export async function POST(req: NextRequest) {
   const { input, history = [], answers = [] } = await req.json();
 
-  const questionCount = answers.length - 1; // 最初の入力を除いた回答数
+  // AIが答えた質問の数をhistoryから正確にカウント
+  const aiQuestionCount = history.filter((m: { role: string }) => m.role === "ai").length;
 
   const systemPrompt = `あなたは「だいべんしゃ」というAIアシスタントです。
 ユーザーの相談を聞いて、状況・感情・目的・ゴールを丁寧に深掘りしてください。
@@ -30,16 +31,17 @@ export async function POST(req: NextRequest) {
 日常的な表現・比喩・愚痴は安全と判断し、通常の問診を続けること。
 曖昧な場合は必ず通常フローを続ける。
 
-【終了判断】
-現在の質問回数: ${questionCount}回
+【終了判断 - これは厳守すること】
+あなたがこれまでに行った質問の数: ${aiQuestionCount}回
 
-- 5回未満：必ず続ける。絶対にdoneにしない
-- 5回以上：以下が全て揃った場合のみ {"done": true} を返す
-  ・何が起きているか（状況の事実）
-  ・今どんな気持ちか（感情）
-  ・本当はどうしたいか（目的・ゴール）
-  ・今すぐ行動が必要か（緊急性）
-- 7回に達したら必ず {"done": true}
+ルール：
+- ${aiQuestionCount}が4以下の場合：{"done": true}を返すことは絶対に禁止。必ず{"question": "..."}を返すこと
+- ${aiQuestionCount}が5以上の場合：以下の4つが全て会話から確認できる場合のみ{"done": true}を返してよい
+  1. 何が起きているか（状況の事実）が明確
+  2. 今どんな気持ちか（感情）が明確
+  3. 本当はどうしたいか（目的・ゴール）が明確
+  4. 今すぐ行動が必要か（緊急性）が明確
+- ${aiQuestionCount}が7以上の場合：必ず{"done": true}を返す
 
 【質問のルール】
 - 一問だけ返す
